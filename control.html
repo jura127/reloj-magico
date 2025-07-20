@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Control del Reloj</title>
+  <style>
+    body {
+      background-color: #111;
+      color: lime;
+      font-family: monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    input, button {
+      font-size: 20px;
+      padding: 10px;
+      margin: 10px;
+      border-radius: 8px;
+    }
+    button {
+      background-color: lime;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    iframe {
+      border: 2px solid lime;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Control Remoto del Reloj</h2>
+<input type="time" id="horaObjetivo" value="12:00">
+<button onclick="enviarHora()">Iniciar reloj</button>
+
+<iframe src="reloj.html" width="400" height="200"></iframe>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCt3XT8ZcFB58UVZMgeCbAoV0X9XF5o6Xk",
+    authDomain: "reloj-magico.firebaseapp.com",
+    databaseURL: "https://reloj-magico-default-rtdb.firebaseio.com",
+    projectId: "reloj-magico",
+    storageBucket: "reloj-magico.appspot.com",
+    messagingSenderId: "391313162883",
+    appId: "1:391313162883:web:a6373ca815ce02369211b6"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  function enviarHora() {
+    const hora = document.getElementById("horaObjetivo").value;
+    db.ref("reloj").set({
+      targetTime: hora,
+      start: true
+    }).then(() => {
+      alert("✅ Enviado al reloj: " + hora);
+    }).catch((err) => {
+      alert("❌ Error: " + err.message);
+    });
+  }
+</script>
+
+</body>
+</html>

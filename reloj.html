@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reloj Mágico</title>
+  <style>
+    body {
+      background-color: black;
+      color: lime;
+      font-family: 'Courier New', Courier, monospace;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+    }
+    #clock {
+      font-size: 160px;
+      text-shadow: 0 0 30px lime;
+    }
+    .alarm-active {
+      animation: shake 0.4s infinite;
+      color: red;
+      text-shadow: 0 0 30px red;
+    }
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      50% { transform: translateX(10px); }
+      75% { transform: translateX(-10px); }
+      100% { transform: translateX(0); }
+    }
+  </style>
+</head>
+<body>
+
+<div id="clock">--:--</div>
+<audio id="alarm" src="alarma/alarma.mp3" preload="auto"></audio>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCt3XT8ZcFB58UVZMgeCbAoV0X9XF5o6Xk",
+    authDomain: "reloj-magico.firebaseapp.com",
+    databaseURL: "https://reloj-magico-default-rtdb.firebaseio.com",
+    projectId: "reloj-magico",
+    storageBucket: "reloj-magico.appspot.com",
+    messagingSenderId: "391313162883",
+    appId: "1:391313162883:web:a6373ca815ce02369211b6"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  const clock = document.getElementById("clock");
+  const alarm = document.getElementById("alarm");
+
+  let hour, minute;
+  let targetHour, targetMinute;
+  let timer = null;
+
+  function showCurrentTime() {
+    const now = new Date();
+    hour = now.getHours();
+    minute = now.getMinutes();
+    updateClockDisplay();
+  }
+
+  function updateClockDisplay() {
+    clock.textContent = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  }
+
+  function advanceTime() {
+    if (hour === targetHour && minute === targetMinute) {
+      clearInterval(timer);
+      clock.classList.add('alarm-active');
+      alarm.play();
+      return;
+    }
+
+    minute++;
+    if (minute >= 60) {
+      minute = 0;
+      hour++;
+      if (hour >= 24) hour = 0;
+    }
+    updateClockDisplay();
+  }
+
+  // Siempre mostrar hora real y no iniciar nada
+  showCurrentTime();
+
+  // Solo escuchar cambios nuevos
+  db.ref("reloj").on("value", (snapshot) => {
+    const data = snapshot.val();
+    if (data?.start === true && data?.targetTime) {
+      [targetHour, targetMinute] = data.targetTime.split(":").map(Number);
+
+      // Reinicio la animación
+      clock.classList.remove("alarm-active");
+
+      alarm.play().then(() => {
+        alarm.pause();
+        alarm.currentTime = 0;
+      });
+
+      clearInterval(timer);
+      timer = setInterval(advanceTime, 150);
+
+      // IMPORTANTE: Desactivar "start" para no repetir si se recarga
+      db.ref("reloj").update({ start: false });
+    }
+  });
+</script>
+
+</body>
+</html>
