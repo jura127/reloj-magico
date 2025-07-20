@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Reloj Mágico</title>
   <style>
     body {
@@ -76,7 +76,9 @@
     if (hour === targetHour && minute === targetMinute) {
       clearInterval(timer);
       clock.classList.add('alarm-active');
-      alarm.play();
+      alarm.play().catch(() => {
+        console.warn("No se pudo reproducir el audio: probablemente bloqueo del navegador.");
+      });
       return;
     }
 
@@ -89,27 +91,29 @@
     updateClockDisplay();
   }
 
-  // Siempre mostrar hora real y no iniciar nada
+  // Mostrar hora real inicialmente
   showCurrentTime();
 
-  // Solo escuchar cambios nuevos
+  // Escuchar cambios en Firebase
   db.ref("reloj").on("value", (snapshot) => {
     const data = snapshot.val();
     if (data?.start === true && data?.targetTime) {
       [targetHour, targetMinute] = data.targetTime.split(":").map(Number);
 
-      // Reinicio la animación
       clock.classList.remove("alarm-active");
 
+      // Preparar audio (opcional, puede ayudar)
       alarm.play().then(() => {
         alarm.pause();
         alarm.currentTime = 0;
+      }).catch(() => {
+        // Ignorar error
       });
 
       clearInterval(timer);
       timer = setInterval(advanceTime, 150);
 
-      // IMPORTANTE: Desactivar "start" para no repetir si se recarga
+      // Marcar start false para no reiniciar sin nuevo botón
       db.ref("reloj").update({ start: false });
     }
   });
