@@ -23,13 +23,6 @@
       color: red;
       text-shadow: 0 0 30px red;
     }
-    @keyframes shake {
-      0% { transform: translateX(0); }
-      25% { transform: translateX(-10px); }
-      50% { transform: translateX(10px); }
-      75% { transform: translateX(-10px); }
-      100% { transform: translateX(0); }
-    }
   </style>
 </head>
 <body>
@@ -73,6 +66,7 @@ function showCurrentTime() {
 
 // Avanzar rápido incluyendo segundos
 function advanceTime() {
+  // Si llegamos a la hora objetivo, parar
   if(hour === targetHour && minute === targetMinute && second === 0){
     clearInterval(timer);
     clock.classList.add('alarm-active');
@@ -80,7 +74,7 @@ function advanceTime() {
     return;
   }
 
-  // Acelerar segundos
+  // Avanzar un segundo por tick
   second++;
   if(second >= 60){
     second = 0;
@@ -103,16 +97,16 @@ horaRealInterval = setInterval(showCurrentTime, 1000);
 db.ref("reloj").on("value", snapshot => {
   const data = snapshot.val();
   if(data?.start === true && data?.targetTime){
-    clearInterval(horaRealInterval); // detener hora real
+    // Detener hora real
+    clearInterval(horaRealInterval);
 
     [targetHour, targetMinute] = data.targetTime.split(":").map(Number);
     clock.classList.remove('alarm-active');
 
     clearInterval(timer);
-    timer = setInterval(advanceTime, 50); // ⚡ más rápido con segundos
+    timer = setInterval(advanceTime, 50); // acelerado
 
-    // Limpiar start para que no se repita
-    db.ref("reloj").update({ start: false });
+    // NO desactivamos start aquí, controlará desde el otro dispositivo
   }
 });
 </script>
