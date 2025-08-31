@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Reloj Mágico</title>
   <style>
     body {
       background-color: black;
       color: lime;
-      font-family: 'Courier New', Courier, monospace;
+      font-family: 'Courier New', monospace;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -15,7 +15,7 @@
       flex-direction: column;
     }
     #clock {
-      font-size: 300px;
+      font-size: 200px;
       text-shadow: 0 0 30px lime;
     }
     .alarm-active {
@@ -34,89 +34,78 @@
 </head>
 <body>
 
-<div id="clock">--:--</div>
+<div id="clock">--:--:--</div>
 <audio id="alarm" src="alarma/alarma.mp3" preload="auto"></audio>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyCt3XT8ZcFB58UVZMgeCbAoV0X9XF5o6Xk",
-    authDomain: "reloj-magico.firebaseapp.com",
-    databaseURL: "https://reloj-magico-default-rtdb.firebaseio.com",
-    projectId: "reloj-magico",
-    storageBucket: "reloj-magico.appspot.com",
-    messagingSenderId: "391313162883",
-    appId: "1:391313162883:web:a6373ca815ce02369211b6"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyCt3XT8ZcFB58UVZMgeCbAoV0X9XF5o6Xk",
+  authDomain: "reloj-magico.firebaseapp.com",
+  databaseURL: "https://reloj-magico-default-rtdb.firebaseio.com",
+  projectId: "reloj-magico",
+  storageBucket: "reloj-magico.appspot.com",
+  messagingSenderId: "391313162883",
+  appId: "1:391313162883:web:a6373ca815ce02369211b6"
+};
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-  const clock = document.getElementById("clock");
-  const alarm = document.getElementById("alarm");
+const clock = document.getElementById("clock");
+const alarm = document.getElementById("alarm");
 
-  let hour, minute;
-  let targetHour, targetMinute;
-  let timer = null;
+let hour, minute, second;
+let targetHour, targetMinute;
+let timer = null;
+let horaRealInterval = null;
 
-  function showCurrentTime() {
-    const now = new Date();
-    hour = now.getHours();
-    minute = now.getMinutes();
-    updateClockDisplay();
+// Mostrar hora real
+function showCurrentTime() {
+  const now = new Date();
+  hour = now.getHours();
+  minute = now.getMinutes();
+  second = now.getSeconds();
+  clock.textContent = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}:${String(second).padStart(2,'0')}`;
+}
+
+// Avanzar rápido hasta la hora objetivo
+function advanceTime() {
+  if(hour === targetHour && minute === targetMinute){
+    clearInterval(timer);
+    clock.classList.add('alarm-active');
+    alarm.play();
+    return;
   }
 
-  function updateClockDisplay() {
-    clock.textContent = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  minute++;
+  second = 0; // reiniciar segundos al avanzar un minuto
+  if(minute >= 60){ minute = 0; hour++; if(hour>=24) hour=0; }
+  clock.textContent = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}:${String(second).padStart(2,'0')}`;
+}
+
+// Mostrar hora real desde el inicio
+showCurrentTime();
+horaRealInterval = setInterval(showCurrentTime, 1000);
+
+// Escuchar cambios de Firebase
+db.ref("reloj").on("value", snapshot => {
+  const data = snapshot.val();
+  if(data?.start === true && data?.targetTime){
+    clearInterval(horaRealInterval); // detener hora real
+
+    [targetHour, targetMinute] = data.targetTime.split(":").map(Number);
+    clock.classList.remove('alarm-active');
+
+    clearInterval(timer);
+    timer = setInterval(advanceTime, 150); // adelantar rápido
+
+    // Limpiar start para que no se repita
+    db.ref("reloj").update({ start: false });
   }
-
-  function advanceTime() {
-    if (hour === targetHour && minute === targetMinute) {
-      clearInterval(timer);
-      clock.classList.add('alarm-active');
-      alarm.play().catch(() => {
-        console.warn("No se pudo reproducir el audio: probablemente bloqueo del navegador.");
-      });
-      return;
-    }
-
-    minute++;
-    if (minute >= 60) {
-      minute = 0;
-      hour++;
-      if (hour >= 24) hour = 0;
-    }
-    updateClockDisplay();
-  }
-
-  // Mostrar hora real inicialmente
-  showCurrentTime();
-
-  // Escuchar cambios en Firebase
-  db.ref("reloj").on("value", (snapshot) => {
-    const data = snapshot.val();
-    if (data?.start === true && data?.targetTime) {
-      [targetHour, targetMinute] = data.targetTime.split(":").map(Number);
-
-      clock.classList.remove("alarm-active");
-
-      // Preparar audio (opcional, puede ayudar)
-      alarm.play().then(() => {
-        alarm.pause();
-        alarm.currentTime = 0;
-      }).catch(() => {
-        // Ignorar error
-      });
-
-      clearInterval(timer);
-      timer = setInterval(advanceTime, 150);
-
-      // Marcar start false para no reiniciar sin nuevo botón
-      db.ref("reloj").update({ start: false });
-    }
-  });
+});
 </script>
 
 </body>
