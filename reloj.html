@@ -71,18 +71,27 @@ function showCurrentTime() {
   clock.textContent = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}:${String(second).padStart(2,'0')}`;
 }
 
-// Avanzar rápido hasta la hora objetivo
+// Avanzar rápido incluyendo segundos
 function advanceTime() {
-  if(hour === targetHour && minute === targetMinute){
+  if(hour === targetHour && minute === targetMinute && second === 0){
     clearInterval(timer);
     clock.classList.add('alarm-active');
     alarm.play();
     return;
   }
 
-  minute++;
-  second = 0; // reiniciar segundos al avanzar un minuto
-  if(minute >= 60){ minute = 0; hour++; if(hour>=24) hour=0; }
+  // Acelerar segundos
+  second++;
+  if(second >= 60){
+    second = 0;
+    minute++;
+    if(minute >= 60){
+      minute = 0;
+      hour++;
+      if(hour >= 24) hour = 0;
+    }
+  }
+
   clock.textContent = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}:${String(second).padStart(2,'0')}`;
 }
 
@@ -100,7 +109,7 @@ db.ref("reloj").on("value", snapshot => {
     clock.classList.remove('alarm-active');
 
     clearInterval(timer);
-    timer = setInterval(advanceTime, 150); // adelantar rápido
+    timer = setInterval(advanceTime, 50); // ⚡ más rápido con segundos
 
     // Limpiar start para que no se repita
     db.ref("reloj").update({ start: false });
