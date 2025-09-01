@@ -23,11 +23,18 @@
       color: red;
       text-shadow: 0 0 30px red;
     }
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      50% { transform: translateX(10px); }
+      75% { transform: translateX(-10px); }
+      100% { transform: translateX(0); }
+    }
   </style>
 </head>
 <body>
 
-<div id="clock">--:--:--</div>
+<div id="clock">--:--</div>
 <audio id="alarm" src="alarma/alarma.mp3" preload="auto"></audio>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -50,7 +57,7 @@ const db = firebase.database();
 const clock = document.getElementById("clock");
 const alarm = document.getElementById("alarm");
 
-let hour, minute, second;
+let hour, minute;
 let targetHour, targetMinute;
 let timer = null;
 let horaRealInterval = null;
@@ -60,33 +67,28 @@ function showCurrentTime() {
   const now = new Date();
   hour = now.getHours();
   minute = now.getMinutes();
-  second = now.getSeconds();
-  clock.textContent = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}:${String(second).padStart(2,'0')}`;
+  clock.textContent = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
 }
 
-// Avanzar rápido incluyendo segundos
+// Avanzar rápido incluyendo minutos
 function advanceTime() {
   // Si llegamos a la hora objetivo, parar
-  if(hour === targetHour && minute === targetMinute && second === 0){
+  if(hour === targetHour && minute === targetMinute){
     clearInterval(timer);
     clock.classList.add('alarm-active');
     alarm.play();
     return;
   }
 
-  // Avanzar un segundo por tick
-  second++;
-  if(second >= 60){
-    second = 0;
-    minute++;
-    if(minute >= 60){
-      minute = 0;
-      hour++;
-      if(hour >= 24) hour = 0;
-    }
+  // Avanzar un minuto por tick
+  minute++;
+  if(minute >= 60){
+    minute = 0;
+    hour++;
+    if(hour >= 24) hour = 0;
   }
 
-  clock.textContent = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}:${String(second).padStart(2,'0')}`;
+  clock.textContent = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
 }
 
 // Mostrar hora real desde el inicio
@@ -104,9 +106,9 @@ db.ref("reloj").on("value", snapshot => {
     clock.classList.remove('alarm-active');
 
     clearInterval(timer);
-    timer = setInterval(advanceTime, 50); // acelerado
+    timer = setInterval(advanceTime, 100); // acelera minutos
 
-    // NO desactivamos start aquí, controlará desde el otro dispositivo
+    // No reseteamos start aquí, lo manejas desde control
   }
 });
 </script>
