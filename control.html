@@ -29,10 +29,6 @@
       border: 2px solid lime;
       margin-top: 20px;
     }
-    .error {
-      color: red;
-      font-weight: bold;
-    }
   </style>
 </head>
 <body>
@@ -40,11 +36,9 @@
 <h2>Control Remoto del Reloj</h2>
 <input type="time" id="horaObjetivo" value="12:00">
 <button onclick="enviarHora()">Iniciar reloj</button>
-<button onclick="enviarError()">Error</button>
+<button onclick="ponerError()">Error</button>
 
 <iframe src="reloj.html" width="1000" height="400"></iframe>
-
-<div id="pantallaControl" style="font-size:50px; margin-top:20px;">--:--</div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -69,38 +63,14 @@
       targetTime: hora,
       start: true,
       error: false
-    }).then(() => {
-      alert("✅ Enviado al reloj: " + hora);
-    }).catch((err) => {
-      alert("❌ Error: " + err.message);
     });
   }
 
-  function enviarError() {
+  function ponerError() {
     db.ref("reloj").update({
-      start: false,
       error: true
     });
   }
-
-  const pantalla = document.getElementById("pantallaControl");
-  db.ref("reloj").on("value", snapshot => {
-    const data = snapshot.val();
-    if (!data) return;
-
-    if (data.error) {
-      pantalla.textContent = "ERROR";
-      pantalla.classList.add("error");
-    } else {
-      pantalla.classList.remove("error");
-      if (data.start && data.targetTime) {
-        pantalla.textContent = data.targetTime;
-      } else {
-        const now = new Date();
-        pantalla.textContent = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-      }
-    }
-  });
 </script>
 
 </body>
