@@ -62,7 +62,7 @@
     db.ref("reloj").set({
       targetTime: hora,
       start: true,
-      error: false
+      error: false // ✅ resetea error al iniciar
     });
   }
 

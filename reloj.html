@@ -1,41 +1,41 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Reloj Mágico</title>
-  <style>
-    body {
-      background-color: black;
-      color: lime;
-      font-family: 'Courier New', monospace;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      flex-direction: column;
-    }
-    #clock {
-      font-size: 200px;
-      text-shadow: 0 0 30px lime;
-    }
-    .alarm-active {
-      animation: shake 0.4s infinite;
-      color: red;
-      text-shadow: 0 0 30px red;
-    }
-    .error {
-      color: red;
-      font-weight: bold;
-      text-shadow: 0 0 30px red;
-    }
-    @keyframes shake {
-      0% { transform: translateX(0); }
-      25% { transform: translateX(-10px); }
-      50% { transform: translateX(10px); }
-      75% { transform: translateX(-10px); }
-      100% { transform: translateX(0); }
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Reloj Mágico</title>
+<style>
+  body {
+    background-color: black;
+    color: lime;
+    font-family: 'Courier New', monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    flex-direction: column;
+  }
+  #clock {
+    font-size: 200px;
+    text-shadow: 0 0 30px lime;
+  }
+  .alarm-active {
+    animation: shake 0.4s infinite;
+    color: red;
+    text-shadow: 0 0 30px red;
+  }
+  .error {
+    color: red;
+    font-size: 200px;
+    text-shadow: 0 0 30px red;
+  }
+  @keyframes shake {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    50% { transform: translateX(10px); }
+    75% { transform: translateX(-10px); }
+    100% { transform: translateX(0); }
+  }
+</style>
 </head>
 <body>
 
@@ -62,13 +62,11 @@ const db = firebase.database();
 const clock = document.getElementById("clock");
 const alarm = document.getElementById("alarm");
 
-let hour, minute;
-let targetHour, targetMinute;
+let hour = 0, minute = 0;
+let targetHour = null, targetMinute = null;
 let timer = null;
 let horaRealInterval = null;
-let inError = false;
 
-// Mostrar hora real
 function showCurrentTime() {
   const now = new Date();
   hour = now.getHours();
@@ -76,15 +74,15 @@ function showCurrentTime() {
   clock.textContent = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
 }
 
-// Avanzar rápido hasta la hora objetivo
 function advanceTime() {
   if(hour === targetHour && minute === targetMinute){
     clearInterval(timer);
     clock.classList.add('alarm-active');
     alarm.play();
+    setTimeout(startRealClock, 5000); // vuelve a hora real después de 5s
+    db.ref("reloj").update({ start: false }); // reinicia start
     return;
   }
-
   minute++;
   if(minute >= 60){
     minute = 0;
@@ -94,42 +92,50 @@ function advanceTime() {
   clock.textContent = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
 }
 
-// Mostrar hora real desde el inicio
-showCurrentTime();
-horaRealInterval = setInterval(showCurrentTime, 1000);
+function startRealClock() {
+  clearInterval(timer);
+  clearInterval(horaRealInterval);
+  clock.classList.remove('alarm-active');
+  clock.classList.remove('error');
+  showCurrentTime();
+  horaRealInterval = setInterval(showCurrentTime, 1000);
+  db.ref("reloj").update({ error: false });
+}
 
-// Escuchar cambios de Firebase
-db.ref("reloj").on("value", snapshot => {
-  const data = snapshot.val();
-  if(!data) return;
-
-  // Mostrar error
-  if(data.error) {
-    inError = true;
-    clearInterval(timer);
-    clearInterval(horaRealInterval);
-    clock.textContent = "ERROR";
-    clock.classList.add("error");
-    return;
-  } else {
-    if(inError) {
-      inError = false;
-      clock.classList.remove("error");
-      showCurrentTime();
-      horaRealInterval = setInterval(showCurrentTime, 1000);
-    }
-  }
-
-  // Iniciar avance rápido
-  if(data.start === true && data.targetTime){
-    clearInterval(horaRealInterval);
-    [targetHour, targetMinute] = data.targetTime.split(":").map(Number);
-    clock.classList.remove('alarm-active');
-    clearInterval(timer);
-    timer = setInterval(advanceTime, 100);
-    db.ref("reloj").update({ start: false });
+db.ref("reloj").once("value").then(snapshot => {
+  if (!snapshot.exists()) {
+    db.ref("reloj").set({ start: false, error: false });
   }
 });
+
+db.ref("reloj").on("value", snapshot => {
+  const data = snapshot.val();
+  if (!data) return;
+
+  if(data.error){
+    clearInterval(timer);
+    clearInterval(horaRealInterval);
+    clock.classList.add('error');
+    clock.textContent = "ERROR";
+    return;
+  }
+
+  if(data.start && data.targetTime){
+    clearInterval(timer);
+    clearInterval(horaRealInterval);
+    clock.classList.remove('error');
+    [targetHour, targetMinute] = data.targetTime.split(":").map(Number);
+    clock.classList.remove('alarm-active');
+    timer = setInterval(advanceTime, 100);
+    return;
+  }
+
+  if(!data.start){
+    startRealClock();
+  }
+});
+
+startRealClock();
 </script>
 
 </body>
