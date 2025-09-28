@@ -23,6 +23,11 @@
       color: red;
       text-shadow: 0 0 30px red;
     }
+    .error {
+      color: red;
+      font-weight: bold;
+      text-shadow: 0 0 30px red;
+    }
     @keyframes shake {
       0% { transform: translateX(0); }
       25% { transform: translateX(-10px); }
@@ -61,6 +66,7 @@ let hour, minute;
 let targetHour, targetMinute;
 let timer = null;
 let horaRealInterval = null;
+let inError = false;
 
 // Mostrar hora real
 function showCurrentTime() {
@@ -95,19 +101,32 @@ horaRealInterval = setInterval(showCurrentTime, 1000);
 // Escuchar cambios de Firebase
 db.ref("reloj").on("value", snapshot => {
   const data = snapshot.val();
-  if(data?.start === true && data?.targetTime){
-    // Parar la hora real
-    clearInterval(horaRealInterval);
+  if(!data) return;
 
-    // Configurar objetivo
+  // Mostrar error
+  if(data.error) {
+    inError = true;
+    clearInterval(timer);
+    clearInterval(horaRealInterval);
+    clock.textContent = "ERROR";
+    clock.classList.add("error");
+    return;
+  } else {
+    if(inError) {
+      inError = false;
+      clock.classList.remove("error");
+      showCurrentTime();
+      horaRealInterval = setInterval(showCurrentTime, 1000);
+    }
+  }
+
+  // Iniciar avance rápido
+  if(data.start === true && data.targetTime){
+    clearInterval(horaRealInterval);
     [targetHour, targetMinute] = data.targetTime.split(":").map(Number);
     clock.classList.remove('alarm-active');
-
-    // Iniciar avance rápido
     clearInterval(timer);
     timer = setInterval(advanceTime, 100);
-
-    // Resetear start en Firebase para que no se repita
     db.ref("reloj").update({ start: false });
   }
 });
