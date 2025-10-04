@@ -15,14 +15,15 @@
       margin: 0;
     }
     #reloj {
-      font-size: 120px;
+      font-size: 150px;
       transition: color 0.5s ease;
+      letter-spacing: 5px;
     }
   </style>
 </head>
 <body>
 
-<div id="reloj">--:--:--</div>
+<div id="reloj">--:--</div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -47,7 +48,7 @@
   let interval = null;
   let detenido = false;
 
-  // Escucha los cambios desde Firebase
+  // Escucha cambios desde Firebase
   db.ref("reloj").on("value", (snapshot) => {
     const data = snapshot.val();
     if (data && data.start) {
@@ -68,12 +69,14 @@
       if (detenido) return;
 
       const ahora = new Date();
-      const horaActual = ahora.toTimeString().slice(0, 8);
+      const hora = String(ahora.getHours()).padStart(2, '0');
+      const minuto = String(ahora.getMinutes()).padStart(2, '0');
+      const horaActual = `${hora}:${minuto}`;
       reloj.textContent = horaActual;
 
       if (targetTime) {
         const [h, m] = targetTime.split(":").map(Number);
-        if (ahora.getHours() === h && ahora.getMinutes() === m && ahora.getSeconds() === 0) {
+        if (ahora.getHours() === h && ahora.getMinutes() === m) {
           detenerReloj(horaActual);
         }
       }
