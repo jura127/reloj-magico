@@ -36,7 +36,6 @@
 <h2>Control Remoto del Reloj</h2>
 <input type="time" id="horaObjetivo" value="12:00">
 <button onclick="enviarHora()">Iniciar reloj</button>
-<button onclick="ponerError()">Error</button>
 
 <iframe src="reloj.html" width="1000" height="400"></iframe>
 
@@ -61,14 +60,11 @@
     const hora = document.getElementById("horaObjetivo").value;
     db.ref("reloj").set({
       targetTime: hora,
-      start: true,
-      error: false // ✅ resetea error al iniciar
-    });
-  }
-
-  function ponerError() {
-    db.ref("reloj").update({
-      error: true
+      start: true
+    }).then(() => {
+      alert("✅ Enviado al reloj: " + hora);
+    }).catch((err) => {
+      alert("❌ Error: " + err.message);
     });
   }
 </script>
