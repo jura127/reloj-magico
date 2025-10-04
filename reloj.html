@@ -64,12 +64,14 @@
   let targetTime = null;
   let interval = null;
   let detenido = false;
+  let horaFinal = null;
 
   db.ref("reloj").on("value", (snapshot) => {
     const data = snapshot.val();
     if (data && data.start) {
       targetTime = data.targetTime;
       detenido = false;
+      horaFinal = null;
       estado.textContent = "Contando hacia " + targetTime;
       reloj.style.color = "lime";
       iniciarReloj();
@@ -89,22 +91,25 @@
       if (targetTime) {
         const [h, m] = targetTime.split(":").map(Number);
         if (ahora.getHours() === h && ahora.getMinutes() === m && ahora.getSeconds() === 0) {
-          detenerReloj();
+          detenerReloj(horaActual);
         }
       }
     }, 1000);
   }
 
-  function detenerReloj() {
+  function detenerReloj(horaAlcanzada) {
     detenido = true;
+    horaFinal = horaAlcanzada;
+    reloj.textContent = horaFinal; // se queda fija en la hora alcanzada
     reloj.style.color = "red";
-    estado.textContent = "⏰ Hora alcanzada: " + targetTime;
+    estado.textContent = "⏰ Hora alcanzada: " + horaFinal;
     clearInterval(interval);
   }
 
   function reiniciar() {
     db.ref("reloj").set({ start: false });
     detenido = false;
+    horaFinal = null;
     reloj.style.color = "lime";
     estado.textContent = "Esperando hora...";
     reloj.textContent = "--:--:--";
@@ -115,4 +120,3 @@
 
 </body>
 </html>
-
