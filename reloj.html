@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+    <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -47,40 +47,52 @@
   let targetTime = null;
   let interval = null;
   let detenido = false;
+  let horaActualSimulada = null;
 
-  // Escucha cambios desde Firebase
+  // Escucha los cambios desde Firebase
   db.ref("reloj").on("value", (snapshot) => {
     const data = snapshot.val();
     if (data && data.start) {
       targetTime = data.targetTime;
       detenido = false;
       reloj.style.color = "lime";
-      iniciarReloj();
+      iniciarReloj(targetTime);
     } else {
       detenido = false;
       targetTime = null;
     }
   });
 
-  function iniciarReloj() {
+  function iniciarReloj(horaInicial) {
     if (interval) clearInterval(interval);
+
+    // Se adelanta el reloj a la hora marcada
+    const [h, m] = horaInicial.split(":").map(Number);
+    const ahora = new Date();
+    ahora.setHours(h);
+    ahora.setMinutes(m);
+    ahora.setSeconds(0);
+    horaActualSimulada = ahora;
 
     interval = setInterval(() => {
       if (detenido) return;
 
-      const ahora = new Date();
-      const hora = String(ahora.getHours()).padStart(2, '0');
-      const minuto = String(ahora.getMinutes()).padStart(2, '0');
-      const horaActual = `${hora}:${minuto}`;
-      reloj.textContent = horaActual;
+      const hora = String(horaActualSimulada.getHours()).padStart(2, '0');
+      const minuto = String(horaActualSimulada.getMinutes()).padStart(2, '0');
+      reloj.textContent = `${hora}:${minuto}`;
 
-      if (targetTime) {
-        const [h, m] = targetTime.split(":").map(Number);
-        if (ahora.getHours() === h && ahora.getMinutes() === m) {
-          detenerReloj(horaActual);
-        }
+      // Si llega a la hora real marcada, se detiene
+      const real = new Date();
+      if (
+        real.getHours() === h &&
+        real.getMinutes() === m
+      ) {
+        detenerReloj(`${hora}:${minuto}`);
       }
-    }, 1000);
+
+      // Avanza el tiempo simulado
+      horaActualSimulada.setMinutes(horaActualSimulada.getMinutes() + 1);
+    }, 1000); // 1 segundo real = 1 minuto en el reloj (puedes ajustar)
   }
 
   function detenerReloj(horaAlcanzada) {
@@ -89,8 +101,6 @@
     reloj.style.color = "red";
     clearInterval(interval);
   }
-
-  iniciarReloj();
 </script>
 
 </body>
