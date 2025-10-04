@@ -1,142 +1,118 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>Reloj Mágico</title>
-<style>
-  body {
-    background-color: black;
-    color: lime;
-    font-family: 'Courier New', monospace;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    flex-direction: column;
-  }
-  #clock {
-    font-size: 200px;
-    text-shadow: 0 0 30px lime;
-  }
-  .alarm-active {
-    animation: shake 0.4s infinite;
-    color: red;
-    text-shadow: 0 0 30px red;
-  }
-  .error {
-    color: red;
-    font-size: 200px;
-    text-shadow: 0 0 30px red;
-  }
-  @keyframes shake {
-    0% { transform: translateX(0); }
-    25% { transform: translateX(-10px); }
-    50% { transform: translateX(10px); }
-    75% { transform: translateX(-10px); }
-    100% { transform: translateX(0); }
-  }
-</style>
+  <meta charset="UTF-8">
+  <title>Reloj en Vivo</title>
+  <style>
+    body {
+      background-color: #000;
+      color: lime;
+      font-family: monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+    }
+    #reloj {
+      font-size: 100px;
+      transition: color 0.5s ease;
+    }
+    #estado {
+      margin-top: 20px;
+      font-size: 24px;
+    }
+    button {
+      margin-top: 20px;
+      font-size: 20px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      background-color: lime;
+      color: black;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
 
-<div id="clock">--:--</div>
-<audio id="alarm" src="alarma/alarma.mp3" preload="auto"></audio>
+<div id="reloj">--:--:--</div>
+<div id="estado">Esperando hora...</div>
+<button onclick="reiniciar()">Reiniciar reloj</button>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyCt3XT8ZcFB58UVZMgeCbAoV0X9XF5o6Xk",
-  authDomain: "reloj-magico.firebaseapp.com",
-  databaseURL: "https://reloj-magico-default-rtdb.firebaseio.com",
-  projectId: "reloj-magico",
-  storageBucket: "reloj-magico.appspot.com",
-  messagingSenderId: "391313162883",
-  appId: "1:391313162883:web:a6373ca815ce02369211b6"
-};
+  const firebaseConfig = {
+    apiKey: "AIzaSyCt3XT8ZcFB58UVZMgeCbAoV0X9XF5o6Xk",
+    authDomain: "reloj-magico.firebaseapp.com",
+    databaseURL: "https://reloj-magico-default-rtdb.firebaseio.com",
+    projectId: "reloj-magico",
+    storageBucket: "reloj-magico.appspot.com",
+    messagingSenderId: "391313162883",
+    appId: "1:391313162883:web:a6373ca815ce02369211b6"
+  };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 
-const clock = document.getElementById("clock");
-const alarm = document.getElementById("alarm");
+  const reloj = document.getElementById("reloj");
+  const estado = document.getElementById("estado");
 
-let hour = 0, minute = 0;
-let targetHour = null, targetMinute = null;
-let timer = null;
-let horaRealInterval = null;
+  let targetTime = null;
+  let interval = null;
+  let detenido = false;
 
-function showCurrentTime() {
-  const now = new Date();
-  hour = now.getHours();
-  minute = now.getMinutes();
-  clock.textContent = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
-}
+  db.ref("reloj").on("value", (snapshot) => {
+    const data = snapshot.val();
+    if (data && data.start) {
+      targetTime = data.targetTime;
+      detenido = false;
+      estado.textContent = "Contando hacia " + targetTime;
+      reloj.style.color = "lime";
+      iniciarReloj();
+    }
+  });
 
-function advanceTime() {
-  if(hour === targetHour && minute === targetMinute){
-    clearInterval(timer);
-    clock.classList.add('alarm-active');
-    alarm.play();
-    setTimeout(startRealClock, 5000); // vuelve a hora real después de 5s
-    db.ref("reloj").update({ start: false }); // reinicia start
-    return;
-  }
-  minute++;
-  if(minute >= 60){
-    minute = 0;
-    hour++;
-    if(hour >= 24) hour = 0;
-  }
-  clock.textContent = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
-}
+  function iniciarReloj() {
+    if (interval) clearInterval(interval);
 
-function startRealClock() {
-  clearInterval(timer);
-  clearInterval(horaRealInterval);
-  clock.classList.remove('alarm-active');
-  clock.classList.remove('error');
-  showCurrentTime();
-  horaRealInterval = setInterval(showCurrentTime, 1000);
-  db.ref("reloj").update({ error: false });
-}
+    interval = setInterval(() => {
+      if (detenido) return;
 
-db.ref("reloj").once("value").then(snapshot => {
-  if (!snapshot.exists()) {
-    db.ref("reloj").set({ start: false, error: false });
-  }
-});
+      const ahora = new Date();
+      const horaActual = ahora.toTimeString().slice(0, 8);
+      reloj.textContent = horaActual;
 
-db.ref("reloj").on("value", snapshot => {
-  const data = snapshot.val();
-  if (!data) return;
-
-  if(data.error){
-    clearInterval(timer);
-    clearInterval(horaRealInterval);
-    clock.classList.add('error');
-    clock.textContent = "ERROR";
-    return;
+      if (targetTime) {
+        const [h, m] = targetTime.split(":").map(Number);
+        if (ahora.getHours() === h && ahora.getMinutes() === m && ahora.getSeconds() === 0) {
+          detenerReloj();
+        }
+      }
+    }, 1000);
   }
 
-  if(data.start && data.targetTime){
-    clearInterval(timer);
-    clearInterval(horaRealInterval);
-    clock.classList.remove('error');
-    [targetHour, targetMinute] = data.targetTime.split(":").map(Number);
-    clock.classList.remove('alarm-active');
-    timer = setInterval(advanceTime, 100);
-    return;
+  function detenerReloj() {
+    detenido = true;
+    reloj.style.color = "red";
+    estado.textContent = "⏰ Hora alcanzada: " + targetTime;
+    clearInterval(interval);
   }
 
-  if(!data.start){
-    startRealClock();
+  function reiniciar() {
+    db.ref("reloj").set({ start: false });
+    detenido = false;
+    reloj.style.color = "lime";
+    estado.textContent = "Esperando hora...";
+    reloj.textContent = "--:--:--";
   }
-});
 
-startRealClock();
+  iniciarReloj();
 </script>
 
 </body>
 </html>
+
