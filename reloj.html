@@ -2,86 +2,115 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Reloj</title>
+  <title>Reloj Mágico</title>
   <style>
     body {
-      background-color: #000;
+      background-color: black;
       color: lime;
-      font-family: monospace;
+      font-family: 'Courier New', monospace;
       display: flex;
-      align-items: center;
       justify-content: center;
+      align-items: center;
       height: 100vh;
-      margin: 0;
+      flex-direction: column;
     }
-    #reloj {
-      font-size: 150px;
-      transition: color 0.5s ease;
-      letter-spacing: 5px;
+    #clock {
+      font-size: 200px;
+      text-shadow: 0 0 30px lime;
+    }
+    .alarm-active {
+      animation: shake 0.4s infinite;
+      color: red;
+      text-shadow: 0 0 30px red;
+    }
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      50% { transform: translateX(10px); }
+      75% { transform: translateX(-10px); }
+      100% { transform: translateX(0); }
     }
   </style>
 </head>
 <body>
 
-<div id="reloj">--:--</div>
+<div id="clock">--:--</div>
+<audio id="alarm" src="alarma/alarma.mp3" preload="auto"></audio>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyCt3XT8ZcFB58UVZMgeCbAoV0X9XF5o6Xk",
-    authDomain: "reloj-magico.firebaseapp.com",
-    databaseURL: "https://reloj-magico-default-rtdb.firebaseio.com",
-    projectId: "reloj-magico",
-    storageBucket: "reloj-magico.appspot.com",
-    messagingSenderId: "391313162883",
-    appId: "1:391313162883:web:a6373ca815ce02369211b6"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyCt3XT8ZcFB58UVZMgeCbAoV0X9XF5o6Xk",
+  authDomain: "reloj-magico.firebaseapp.com",
+  databaseURL: "https://reloj-magico-default-rtdb.firebaseio.com",
+  projectId: "reloj-magico",
+  storageBucket: "reloj-magico.appspot.com",
+  messagingSenderId: "391313162883",
+  appId: "1:391313162883:web:a6373ca815ce02369211b6"
+};
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-  const reloj = document.getElementById("reloj");
+const clock = document.getElementById("clock");
+const alarm = document.getElementById("alarm");
 
-  let targetTime = null;
-  let interval = null;
-  let detenido = false;
-  let horaSimulada = null;
+let hour, minute;
+let targetHour, targetMinute;
+let timer = null;
+let horaRealInterval = null;
 
-  // Escucha los cambios desde Firebase
-  db.ref("reloj").on("value", (snapshot) => {
-    const data = snapshot.val();
-    if (data && data.start) {
-      targetTime = data.targetTime;
-      iniciarRelojRapido(targetTime);
-    }
-  });
+// Mostrar hora real
+function showCurrentTime() {
+  const now = new Date();
+  hour = now.getHours();
+  minute = now.getMinutes();
+  clock.textContent = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
+}
 
-  function iniciarRelojRapido(horaInicial) {
-    if (interval) clearInterval(interval);
-    detenido = false;
-    reloj.style.color = "lime";
-
-    // Empezar desde la hora marcada
-    const [h, m] = horaInicial.split(":").map(Number);
-    const ahora = new Date();
-    ahora.setHours(h);
-    ahora.setMinutes(m);
-    ahora.setSeconds(0);
-    horaSimulada = ahora;
-
-    // Cada 200ms = 1 minuto simulado
-    interval = setInterval(() => {
-      if (detenido) return;
-
-      const horas = String(horaSimulada.getHours()).padStart(2, "0");
-      const minutos = String(horaSimulada.getMinutes()).padStart(2, "0");
-      reloj.textContent = `${horas}:${minutos}`;
-
-      horaSimulada.setMinutes(horaSimulada.getMinutes() + 1);
-    }, 200);
+// Avanzar rápido hasta la hora objetivo
+function advanceTime() {
+  if(hour === targetHour && minute === targetMinute){
+    clearInterval(timer);
+    clock.classList.add('alarm-active');
+    alarm.play();
+    return;
   }
+
+  minute++;
+  if(minute >= 60){
+    minute = 0;
+    hour++;
+    if(hour >= 24) hour = 0;
+  }
+  clock.textContent = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
+}
+
+// Mostrar hora real desde el inicio
+showCurrentTime();
+horaRealInterval = setInterval(showCurrentTime, 1000);
+
+// Escuchar cambios de Firebase
+db.ref("reloj").on("value", snapshot => {
+  const data = snapshot.val();
+  if(data?.start === true && data?.targetTime){
+    // Parar la hora real
+    clearInterval(horaRealInterval);
+
+    // Configurar objetivo
+    [targetHour, targetMinute] = data.targetTime.split(":").map(Number);
+    clock.classList.remove('alarm-active');
+
+    // Iniciar avance rápido
+    clearInterval(timer);
+    timer = setInterval(advanceTime, 100);
+
+    // Resetear start en Firebase para que no se repita
+    db.ref("reloj").update({ start: false });
+  }
+});
 </script>
 
 </body>
